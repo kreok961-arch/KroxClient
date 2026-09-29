@@ -1,0 +1,20 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.krox.client.mixin",
+  "compatibilityLevel": "JAVA_21",
+
+  "client": [
+    "MixinTitleScreen",
+    "MixinPlayerEntityRenderer",
+    "MixinMouse",
+    "MixinDrawContext",
+    "MixinScreenBlur"
+  ],
+
+  "injectors": {
+    "defaultRequire": 1
+  },
+
+  "refmap": "krox.refmap.json"
+}

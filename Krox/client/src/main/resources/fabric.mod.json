@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "krox",
+  "version": "${version}",
+  "name": "Krox Client",
+  "description": "KROXCLIENT v16.0 — client-side utility, HUD and cosmetics for Fabric.",
+  "license": "All-Rights-Reserved",
+  "environment": "client",
+
+  "entrypoints": {
+    "client": ["com.krox.client.KroxClient"],
+    "main": []
+  },
+
+  "mixins": ["krox.mixins.json"],
+
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~1.21.11",
+    "fabric-api": "*",
+    "java": ">=21"
+  },
+
+  "suggests": {
+    "axolotlclient": ">=3.2.1",
+    "flashback": ">=0.39.9",
+    "optixclient": ">=1.7.0"
+  },
+
+  "custom": {
+    "krox": {
+      "buildPhase": "${kroxBuildPhase}"
+    }
+  }
+}

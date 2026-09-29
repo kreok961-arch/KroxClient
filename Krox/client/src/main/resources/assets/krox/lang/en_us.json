@@ -1,0 +1,20 @@
+{
+  "key.krox.open_gui": "Open Krox GUI",
+  "key.krox.module.fullbright": "Toggle Fullbright",
+  "key.krox.module.autosprint": "Toggle Auto Sprint",
+  "key.krox.module.crosshair": "Toggle Custom Crosshair",
+  "key.krox.module.rotationlock": "Toggle Rotation Lock",
+  "krox.category.hud": "HUD",
+  "krox.category.render": "Render",
+  "krox.category.player": "Player",
+  "krox.category.world": "World",
+  "krox.category.misc": "Misc",
+  "krox.category.cosmetics": "Cosmetics",
+  "krox.category.client": "Client",
+  "krox.menu.singleplayer": "Singleplayer",
+  "krox.menu.multiplayer": "Multiplayer",
+  "krox.menu.options": "Options",
+  "krox.menu.krox": "Krox Client",
+  "krox.menu.cosmetics": "Cosmetics",
+  "krox.menu.exit": "Exit Game"
+}

@@ -1,0 +1,32 @@
+name: Phase A Build and Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-phase-a:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - name: Grant execute permission
+        run: chmod +x Krox/client/gradlew
+      - name: Build Phase A with Gradle
+        working-directory: Krox/client
+        run: ./gradlew build --no-daemon --stacktrace
+      - name: Create Pre-release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v16.0.0-phase-a-${{ github.run_number }}
+          name: Phase A Test Release ${{ github.run_number }}
+          body: |
+            Phase A Foundation Services.
+            Commit: ${{ github.sha }}
+          draft: false
+          prerelease: true
+          files: Krox/client/build/libs/*.jar

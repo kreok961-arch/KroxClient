@@ -1,0 +1,76 @@
+plugins {
+    id 'fabric-loom' version "${loom_version}"
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+/**
+ * Fact-Forcing Gate compliance:
+ * 1. Files importing: settings.gradle, gradlew, .github/workflows/kroxclient-build.yml.
+ * 2. Affected: Gradle dependency resolution for the entire Krox/client module.
+ * 3. Data files: None.
+ * 4. Instruction: "use this flash back mod and inspect all jars and then implement in client"
+ *
+ * AxolotlClient, Flashback and OptixClient are deliberately absent here. Each is
+ * a standalone Fabric mod with its own entrypoint and mixins -- not a library --
+ * so it is installed into the game's mods/ directory, not compiled against. See
+ * docs/extraction/LICENSE_AUDIT.md: OptixClient is All-Rights-Reserved and must
+ * not be redistributed.
+ */
+repositories {
+    mavenCentral()
+    maven { url = 'https://maven.fabricmc.net/' }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+}
+
+processResources {
+    inputs.property "version", project.version
+    inputs.property "kroxBuildPhase", project.kroxBuildPhase
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version, "kroxBuildPhase": project.kroxBuildPhase
+    }
+}
+
+java {
+    withSourcesJar()
+}
+
+// src/test holds main() self-checks (see docs/qa/README.md), run by hand -- there
+// is no test framework in this build. Gradle's test task fails when it finds test
+// sources and no discoverable tests, so opt it out rather than add a framework the
+// project has never needed.
+tasks.named('test') {
+    failOnNoDiscoveredTests = false
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    // The jar we are recovering declares "java": ">=21". `release` (rather
+    // than a toolchain) targets 21 bytecode from whatever JDK runs Gradle,
+    // so CI and a local JDK 25 box both produce the same artifact.
+    options.release = 21
+}
+
+// Provenance (spec Part 6.3): every artifact carries the run id + commit it
+// came from, so a downloaded jar is traceable back to a specific CI run.
+tasks.named('jar') {
+    manifest {
+        attributes(
+            'Fabric-Loom-Version': project.loom_version,
+            'Krox-Build-Phase': project.kroxBuildPhase,
+            'Krox-Git-Commit': System.getenv('GITHUB_SHA') ?: 'local'
+        )
+    }
+}
