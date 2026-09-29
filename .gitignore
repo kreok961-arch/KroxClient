@@ -1,34 +1,46 @@
-# Gradle files
-.gradle/
-build/
-
-# Local configuration file (sdk path, etc)
-local.properties
-
-# Log/OS Files
-*.log
-
-# Android Studio generated files and folders
-captures/
-.externalNativeBuild/
-.cxx/
-*.aab
-*.apk
-output-metadata.json
-
-# IntelliJ
 *.iml
-.idea/
-misc.xml
-deploymentTargetDropDown.xml
-render.experimental.xml
+.gradle
+.idea
+.kotlin
+/local.properties
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+CLAUDE.md
+AGENTS.md
+.claudeignore
+.local/
+bin/
+*.class
+krox-tools/
+krox-tools/
+LWJGL/bin/
+.claude-flow/
+*.class
 
-# Keystore files
-*.jks
-*.keystore
+# --- KroxClient v16.0: build output, local tool state, bulk binaries ---
+# Supplied jars stay on disk only. They are third-party binaries we consume
+# as-is; committing them is both a license problem and a size problem
+# (Flashback alone is 202 MB, past GitHub's 100 MB hard push limit).
+Krox/jars/*.jar
+Krox/*/*.jar
+Krox/*/extracted/
+# 3-segment path, so the Krox/*/*.jar rule above misses it. Flashback alone is 211 MB.
+Krox/client/libs/
+launcher icon/*.jar
+Krox/client/build/
+Krox/client/.gradle/
+Krox/client/run/
+*.rvf
+*.rvf.lock
+*.db
+.ruvector/
 
-# Google Services (e.g. APIs or Firebase)
-google-services.json
-
-# Android Profiling
-*.hprof
+# ZalithLauncher: signing keystores and the properties file carrying their
+# passwords. Both were published on a public branch; keep them local. CI supplies
+# the passwords via ORG_GRADLE_PROJECT_*. See .github/workflows/launcher-build.yml.
+ZalithLauncher/*.jks
+ZalithLauncher/gradle.properties

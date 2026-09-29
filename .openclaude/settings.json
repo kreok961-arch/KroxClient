@@ -1,0 +1,9 @@
+{
+  "enabledPlugins": {
+    "ui-ux-pro-max@ui-ux-pro-max-skill": true,
+    "ecc@ecc": true,
+    "ponytail@ponytail": true,
+    "superpowers@claude-plugins-official": true,
+    "superpowers@superpowers-marketplace": true
+  }
+}

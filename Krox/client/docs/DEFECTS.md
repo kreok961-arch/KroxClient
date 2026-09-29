@@ -52,11 +52,11 @@ so `getSettings()` was empty. Every consumer that walks the list saw nothing:
 | Consumer | What it lost |
 |---|---|
 | `KroxClickGuiScreen` (3 sites) | no sliders, toggles or colours rendered — a module opened to a blank panel |
-| `BlurService:152` | the blur strength setting, silently the default |
+| `BlurService:103,107` via `num()`→`find()` at `:147` | `screen_blur.strength` and `glass_ui.blurStrength` read as `0.0`, so `wants()` returned 0 and Krox left every frame to vanilla |
 
 The fix routes the three fields through `register(...)`, which does
 `settings.add(setting); setting.load();` — the single choke point. An audit of all
-88 module impls now finds **zero** bare `= new *Setting(this, ...)` assignments
+90 module impls now finds **zero** bare `= new *Setting(this, ...)` assignments
 outside `this.register(...)`, so this class of defect is gone rather than fixed once.
 
 **The part that mattered more than the missing settings:** the bug made
@@ -70,7 +70,7 @@ is the fix, not a detail.
 
 ### D-11 — `Setting.cfg()` NPE outside a running game
 
-**Status: Verified.** All 14 `cfg()` call sites across the 8 `Setting` subclasses did
+**Status: Verified.** All 14 `cfg()` call sites across the 7 `Setting` subclasses did
 `KroxClient.get().getClientManager().config()`. `KroxClient.get()` is a static
 singleton that is null until the game constructs it, so any construction of a `Setting`
 outside a live client — a self-check, a tool, an IDE eval — NPE'd out of every
@@ -85,8 +85,10 @@ before the game is up.
 ### D-12 — `ConfigManager` resolved its paths in a static initializer
 
 **Status: Verified.** `configDir`/`configFile` were `static final` fields initialised
-at class-load. `javap` on the Yarn-mapped `FabricLoaderImpl` shows `getConfigDir()`
-dereferences a field with no null guard and calls `Files.exists(configDir)` on it, so
+at class-load. `javap -c` on `FabricLoaderImpl` (fabric-loader 0.19.5, a *separate*
+artifact — it is not in the Minecraft jar) shows `getConfigDir()` at offset 0
+dereferences `configDir` with no null guard, passes it to `Files.exists`, and
+`createDirectories` on the false branch, so
 touching `ConfigManager` from anywhere before the loader was live threw
 `ExceptionInInitializerError` — and because it is a *static initializer*, the class
 stays permanently broken for the life of the JVM, not just for the first call.
@@ -187,12 +189,13 @@ window opens, not a runtime feature failure. The mapping to check is Yarn →
 intermediary in the built jar, verified for the D-10 mixins above. Any new mixin needs
 the same check before it is trusted.
 
-The CPS limiter and the HUD drag are additionally covered by an out-of-game check,
+The CPS limiter is additionally covered by an out-of-game check,
 `CpsLimiterSelfCheck` — how to run it is in `docs/qa/README.md`. It is the only
 executable evidence in this file that is not a `javap` dump, and it is what caught
-CPS-d. D-02a/b/c remain verified by build and remap inspection only: nothing here
-executes a `DrawContext`, so a drag that wires up correctly but tracks the wrong
-coordinates would still pass.
+CPS-d. D-02a/b/c remain verified by build and remap inspection only: the check
+never instantiates a `Mouse`, so it cannot confirm the drag hook fires mid-drag
+rather than only on a press — nothing here executes a `DrawContext` either, so a
+drag that wires up correctly but tracks the wrong coordinates would still pass.
 
 **Build evidence for every "Verified" above:** `gradlew build --rerun-tasks`,
 9/9 tasks executed, `BUILD SUCCESSFUL`, plus
