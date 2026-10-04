@@ -1,5 +1,6 @@
 package com.krox.client.gui.screen;
 
+import com.krox.client.KroxClient;
 import com.krox.client.util.KroxTheme;
 import com.krox.client.util.ModPresence;
 import java.util.List;
@@ -100,7 +101,7 @@ public final class KroxSettingsScreen extends net.minecraft.client.gui.screen.Sc
    }
 
    private void drawAbout(net.minecraft.client.gui.DrawContext ctx, int x, int y, int w) {
-      ctx.drawText(this.textRenderer, "Krox Client v1.0.0", x + 6, y + 6, KroxTheme.ACCENT, true);
+      ctx.drawText(this.textRenderer, "Krox Client v" + KroxClient.version(), x + 6, y + 6, KroxTheme.ACCENT, true);
       ctx.drawText(this.textRenderer, "Minecraft 1.21.11 / Fabric Loader 0.19.5", x + 6, y + 22, KroxTheme.TEXT_PRIMARY, false);
       ctx.drawText(this.textRenderer, "Fabric API 0.141.6+1.21.11 / Yarn 1.21.11+build.6", x + 6, y + 34, KroxTheme.TEXT_PRIMARY, false);
       ctx.drawText(this.textRenderer, "Built from scratch - no third-party client dependency.", x + 6, y + 50, KroxTheme.TEXT_SECONDARY, false);

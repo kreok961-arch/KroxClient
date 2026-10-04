@@ -2,6 +2,7 @@ package com.krox.client;
 
 import com.krox.client.manager.ClientManager;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.EndTick;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
@@ -11,7 +12,6 @@ import org.slf4j.LoggerFactory;
 public final class KroxClient implements ClientModInitializer {
    public static final String MOD_ID = "krox";
    public static final String MOD_NAME = "Krox Client";
-   public static final String MOD_VERSION = "1.0.0";
    public static final Logger LOGGER = LoggerFactory.getLogger("Krox Client");
    private static KroxClient instance;
    private final ClientManager clientManager = ClientManager.get();
@@ -20,9 +20,20 @@ public final class KroxClient implements ClientModInitializer {
       return instance;
    }
 
+   /**
+    * The version, read from the loader rather than kept here. Three screens and the boot log
+    * each had their own literal, all of them "1.0.0" while gradle.properties said 16.0.0.
+    * The one source of truth is mod_version; the loader is where the build already stamped it.
+    */
+   public static String version() {
+      return FabricLoader.getInstance().getModContainer(MOD_ID)
+         .map(c -> c.getMetadata().getVersion().getFriendlyString())
+         .orElse("?");
+   }
+
    public void onInitializeClient() {
       instance = this;
-      LOGGER.info("[Krox] Booting Krox Client {} for Minecraft 1.21.11", "1.0.0");
+      LOGGER.info("[Krox] Booting {} v{} for Minecraft 1.21.11", MOD_NAME, version());
 
       try {
          this.clientManager.initialize();

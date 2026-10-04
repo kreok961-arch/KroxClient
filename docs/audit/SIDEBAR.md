@@ -61,20 +61,34 @@ file above:
 
 | Symbol | Line | Role |
 |---|---|---|
-| `SidebarSlideEnterSpec` | 118 | Enter transition spec |
-| `SidebarSlideExitSpec` | 120 | Exit transition spec |
-| `CollapsibleSidebarSection` | 1181 | Collapsible section container |
-| `SidebarNavItem` | 1242 | Single nav row |
-| `SidebarStorageFooter` | 1317 | Storage summary pinned to sidebar bottom |
+| `SidebarSlideEnterSpec` | 122 | Enter transition spec |
+| `SidebarSlideExitSpec` | 124 | Exit transition spec |
+| `CollapsibleSidebarSection` | 1185 | Collapsible section container |
+| `SidebarNavItem` | 1244 | Single nav row |
+| `SidebarStorageFooter` | 1324 | Storage summary pinned to sidebar bottom |
 
-This is the sidebar users actually see, on the File Manager screen. It is **KEEP** —
-structure and behaviour unchanged; **REDESIGN** for surface, spacing, and selection state.
+This is one of **two** live sidebars in the app, not the only one — see §4. It is
+**KEEP** — structure and behaviour unchanged; **REDESIGN** for surface, spacing, and
+selection state.
 
 **Hover now ships (R-42).** `SidebarNavItem` had the §6.4 Selected background and the
 3 dp accent bar but no Hover layer at all. It now observes its own
 `MutableInteractionSource` and layers `KroxHoverOverlay` over the selected background at
-120 ms, so hovering a selected row shows both — the same behaviour as
-`_SimpleRail.TextRailItem`. Line numbers in this table are post-edit.
+120 ms, so hovering a selected row shows both. The same pass closed the rest of the §6.4
+Hover row on this surface: unselected rows now lift their text and icon to `#F9FAFB`
+on hover, and the two pre-existing tweens were retimed to §6.5's per-surface values
+(background 120 ms, left bar 140 ms) with `KroxEaseOut`. Line numbers in this table are
+post-edit.
+
+§6.4's **Focus** and **Disabled** rows are still unimplemented here — the composable has
+no `enabled` parameter and no `focusable` modifier. See D-13 in `docs/REGRESSIONS.md`.
+
+**Motion corrected in R-45.** 10 `tween(...)` calls in this file carried no `easing`
+argument and were therefore running on Compose's default `FastOutSlowInEasing`, which
+§3.6 permits nowhere. All 10 now pass `easing = KroxEaseOut`; durations and
+`delayMillis` are unchanged. The two `Section*Spec` fade vals (`:130-133`) are consumed
+by `CollapsibleSidebarSection` at `:1230`/`:1234`, so they were live rather than dead
+defaults. Full row in `docs/REGRESSIONS.md`.
 
 ---
 
@@ -84,9 +98,10 @@ structure and behaviour unchanged; **REDESIGN** for surface, spacing, and select
 
 | Symbol | Line |
 |---|---|
-| `fun TextRailItem(` | 70 |
+| `fun TextRailItem(` | 75 |
 
-Padding lives at `:139`. Everything else in the file is private.
+Padding is animated at `:141-160`; the default `PaddingValues` it reads is declared at
+`:81`. Everything else in the file is private.
 
 **Correction:** an earlier draft claimed `SettingsScreen.TabMenu` is a caller. It is
 not — `SettingsScreen.kt:164-180` instantiates Material3's `NavigationRailItem`
@@ -99,15 +114,40 @@ match the §7.7 hairline and §4 radius tokens.
 
 ---
 
-## 4. `RightMenu` — the Home right-hand panel
+## 4. `MainScreen.SidebarNavButton` — the top-level rail
+
+`ui/screens/main/MainScreen.kt` carries the launcher's own nav rail, separate from both
+the File Manager sidebar and `_SimpleRail`. It is constructed by the app entry point
+`ui/activities/MainActivity.kt:329`, so it is present on **every** screen.
+
+| Symbol | Line | Role |
+|---|---|---|
+| `SidebarNavButton(` | 450 | Rail nav row (collapsible expanded/collapsed) |
+| 6 call sites | 359, 367, 375, 383, 391, 399 | The six primary destinations |
+
+This is the highest-traffic nav item in the codebase and it was, until R-42, the
+navigation surface with no §6.4 Hover state whatsoever. R-42 gave it the same treatment
+as §2: a `MutableInteractionSource` threaded into the existing `Surface(onClick = …)`,
+`KroxHoverOverlay` composited over the container colour via `compositeOver` at `:493`,
+and `#F9FAFB` for text and icon on hover. Its pre-existing timings were already
+§6.5-compliant (background 120 ms, left bar 140 ms, both `KroxEaseOut`).
+
+**Correction to the record:** R-42 originally described `SidebarNavItem` as "the
+launcher's one live sidebar item." That was wrong — two live nav-item composables exist,
+and this is the busier one. Both are now covered. R-44 completed `TextRailItem`; see
+the §6.4 coverage table at the end of this file.
+
+---
+
+## 5. `RightMenu` — the Home right-hand panel
 
 Not a sidebar, but structurally adjacent and the other half of Home's composition.
 
 | Symbol | Line | Source |
 |---|---|---|
-| `RightMenuContent(` | 309 | current `LauncherScreen.kt` |
-| `RightMenu(` | 462 | current `LauncherScreen.kt` |
-| call site | 161 | `LauncherScreen.kt` |
+| `RightMenuContent(` | 320 | current `LauncherScreen.kt` |
+| `RightMenu(` | 473 | current `LauncherScreen.kt` |
+| call site | 168 | `LauncherScreen.kt` |
 
 Restored **verbatim** from codespace export `3d9ab76`, not re-derived — see R-03 in
 `docs/audit/RISKS.md`. The original line numbers in that risk entry (`:762`, `:616`,
@@ -120,6 +160,25 @@ drift. **KEEP** the structure exactly; **REDESIGN** surfaces and spacing only.
 
 | Class | Items |
 |---|---|
-| **KEEP** | `CollapsibleSidebarSection` + its 4 siblings, `_SimpleRail.TextRailItem`, `RightMenu`/`RightMenuContent` structure. |
+| **KEEP** | `CollapsibleSidebarSection` + its 4 siblings, `MainScreen.SidebarNavButton`, `_SimpleRail.TextRailItem`, `RightMenu`/`RightMenuContent` structure. |
 | **REDESIGN** | All live sidebar and rail *presentation*: surface, padding, selection indicator, dividers. |
 | **FIX** | `SideBar.kt` — dead. Delete or record; either way it should not ship. |
+
+## §6.4 state coverage across the three live nav surfaces
+
+Phase 6's "hover / focus / disabled state audit" resolved to this table. Hover is
+complete on all three; Focus and Disabled are absent on all three, and that absence is
+recorded once as D-13 rather than repeated per surface.
+
+| Surface | Default | Hover | Selected | Focus | Disabled |
+|---|---|---|---|---|---|
+| `MainScreen.SidebarNavButton` | present | **complete** (R-42) | present | absent | absent |
+| `BuiltInFileManager.SidebarNavItem` | present | **complete** (R-42) | present | absent | absent |
+| `_SimpleRail.TextRailItem` | present | **complete** (R-40 background, R-44 text lift) | present | absent | present (`enabled` param → `DisabledAlpha`) |
+
+All three now cover the whole §6.4 Hover row — background wash *and* the `#F9FAFB`
+text/icon lift. `TextRailItem` reached the text lift in R-44; until then it drew the
+`KroxHoverOverlay` canvas but its `contentColor` at `_SimpleRail.kt:172` branched on
+`selected` alone, so the lift was missing. It is the only one of the three with a
+disabled state, because it is the only one that takes an `enabled` parameter — the hover
+branch there is gated on `isHovered && enabled` so a disabled row cannot light up.

@@ -20,8 +20,14 @@ public final class WatermarkModule extends Module implements HudWidget {
       KroxClient.get().getClientManager().hud().unregister(this);
    }
 
+   /**
+    * The version is read from the loader rather than hardcoded. It said "KROX v1.0.0"
+    * while mod_version was 16.0.0, so the HUD would have lied on every release.
+    * The lookup itself lives on KroxClient.version() -- this used to carry its own
+    * copy of it, which is the same second source of truth D-13 is about.
+    */
    @Override
    public String renderText() {
-      return "KROX v1.0.0";
+      return "KROX v" + KroxClient.version();
    }
 }

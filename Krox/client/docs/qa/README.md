@@ -35,6 +35,7 @@ for p in slf4j log4j gson api fabric-loader fastutil datafixerupper joml \
 done
 
 java -cp "$CP" com.krox.client.CpsLimiterSelfCheck
+java -cp "$CP" com.krox.client.HudDragSelfCheck
 ```
 
 `SLF4J: Failed to load class "org.slf4j.impl.StaticLoggerBinder"` on the way out is
@@ -65,8 +66,55 @@ Note the ordering rule these checks follow: assert a value **before** changing t
 setting that would change it. Both of the two defects this check caught were a test
 asserting against a default it had already overridden.
 
+### HudDragSelfCheck
+
+`com.krox.client.HudDragSelfCheck` — the HUD drag math, from press to release.
+
+Reaching it at all required a change: `HudManager.onMouseDrag` read the window
+through `MinecraftClient.getInstance()`, and it now takes the screen size as
+parameters, as does `beginDrag` for the widget's top-left. The mixin already holds a
+client, so nothing was lost — but with the static gone, the real drag path is
+reachable from a plain `main()`.
+
+It covers five things:
+
+1. **A drag exists only between a press and a release.** Cursor movement with nothing
+   pressed leaves the widget where it was.
+2. **The press-time offset is what makes it track rather than snap.** The check grabs
+   a widget 5px right and above its origin, then drags twice. A drag that dropped the
+   offset would put the origin on the cursor; 5px over 639 is 0.0078, so it misses by
+   three whole setting steps.
+3. **A release ends the drag,** and a later cursor move must not resurrect it.
+4. **The normalized result follows the size it was handed,** not a cached one — same
+   cursor, half-size window, result roughly doubles.
+5. **A value past 1.0 clamps rather than storing,** so a drag cannot fling a widget
+   off screen.
+
+It does not execute the mixin. Which method the hook injects into is settled by
+`javap`, recorded in `docs/DEFECTS.md` — a hook on the wrong method would pass every
+assertion here.
+
+**Comparing a dragged position.** `NumberSetting.set()` rounds to the setting's step
+before storing, so a value read back is a multiple of 0.001 and never the exact
+quotient the drag math produced. The check puts its *expected* value through the same
+rounding rather than widening the tolerance, so a real error still fails by whole
+steps instead of hiding inside a fatter epsilon.
+
+**The anti-vacuity rule.** A check here is not finished when it passes — it is
+finished when it has been shown to *fail* against a deliberately broken
+implementation. Five mutations of the drag math were run: dropping the x offset, dropping
+the y offset, making `onMouseRelease` a no-op, caching a stale screen size, and dividing
+by `screenW` instead of `screenW - 1`. Each was caught by a different assertion and all
+five were reverted. This is the D-04 lesson: a check that is green for the wrong reason
+is worse than no check at all.
+
+The five kill lines are recorded in `docs/DEFECTS.md`. The lesson is not the count — it
+is that each one dies on a *different* assertion. A check that only ever turns red for a
+single reason knows one bug, not its subject.
+
 ## Adding one
 
 Keep it to the smallest thing that fails if the logic breaks. If a check needs a mock
 framework to run, the design is telling you something — reach for `register()`-style
-seams in the module itself rather than growing the harness.
+seams in the module itself rather than growing the harness. If reaching the code
+means deleting a static singleton from it, that is the fix, not the mock.

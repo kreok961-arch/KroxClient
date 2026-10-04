@@ -98,27 +98,42 @@ public final class HudManager {
    public boolean onMouseClick(double mouseX, double mouseY) {
       for (HudWidget w : this.widgets) {
          if (w instanceof HudElement e && e.hitTest(mouseX, mouseY)) {
-            this.dragging = e;
-            this.dragOffsetX = mouseX - e.scaledX();
-            this.dragOffsetY = mouseY - e.scaledY();
-            return true;
+            return this.beginDrag(e, mouseX, mouseY, e.scaledX(), e.scaledY());
          }
       }
 
       return false;
    }
 
+   /**
+    * The drag math, with the widget's top-left passed in rather than read back from it.
+    * Hit testing already computed that position to decide the press landed, and asking
+    * for it twice meant a second read of the MinecraftClient window singleton -- which is
+    * the only reason the drag path could not be exercised out of game (HudDragSelfCheck).
+    *
+    * @return true, so a caller can treat this as the press being consumed.
+    */
+   public boolean beginDrag(HudElement e, double mouseX, double mouseY, double widgetX, double widgetY) {
+      this.dragging = e;
+      this.dragOffsetX = mouseX - widgetX;
+      this.dragOffsetY = mouseY - widgetY;
+      return true;
+   }
+
    public void onMouseRelease() {
       this.dragging = null;
    }
 
-   public void onMouseDrag(double mouseX, double mouseY) {
+   /**
+    * Screen size is passed in rather than read from the MinecraftClient singleton: the
+    * mixin already holds a client, and a static there is the one thing that makes this
+    * path unreachable from an out-of-game check (HudDragSelfCheck).
+    */
+   public void onMouseDrag(double mouseX, double mouseY, int screenW, int screenH) {
       if (this.dragging == null) {
          return;
       }
 
-      int sw = net.minecraft.client.MinecraftClient.getInstance().getWindow().getScaledWidth();
-      int sh = net.minecraft.client.MinecraftClient.getInstance().getWindow().getScaledHeight();
-      this.dragging.moveTo((mouseX - this.dragOffsetX) / (double)Math.max(1, sw - 1), (mouseY - this.dragOffsetY) / (double)Math.max(1, sh - 1));
+      this.dragging.moveTo((mouseX - this.dragOffsetX) / (double)Math.max(1, screenW - 1), (mouseY - this.dragOffsetY) / (double)Math.max(1, screenH - 1));
    }
 }

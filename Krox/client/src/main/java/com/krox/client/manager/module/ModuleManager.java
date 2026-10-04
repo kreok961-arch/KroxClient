@@ -87,6 +87,10 @@ import com.krox.client.manager.module.impl.SessionRefreshModule;
 import com.krox.client.manager.module.impl.SkinSyncModule;
 import com.krox.client.manager.module.impl.Wardrobe3dModule;
 import com.krox.client.manager.module.impl.CosmeticSyncModule;
+import com.krox.client.manager.module.impl.ModuleListModule;
+import com.krox.client.manager.module.impl.RotationLockModule;
+import com.krox.client.manager.module.impl.SprintModule;
+import com.krox.client.manager.module.impl.WatermarkModule;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -186,6 +190,10 @@ public final class ModuleManager {
       this.register(new SkinSyncModule());
       this.register(new Wardrobe3dModule());
       this.register(new CosmeticSyncModule());
+      this.register(new ModuleListModule());
+      this.register(new RotationLockModule());
+      this.register(new SprintModule());
+      this.register(new WatermarkModule());
 
       for (Module m : this.all) {
          boolean savedEnabled = KroxClient.get().getClientManager().config().getBool("modules." + m.getId() + ".enabled", m.isEnabled());

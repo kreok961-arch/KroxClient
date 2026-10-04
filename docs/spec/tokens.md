@@ -123,15 +123,18 @@ and it is a scope decision, not an oversight.** Recorded in `docs/audit/RISKS.md
 
 | File:line | Value | Verdict |
 |---|---|---|
-| `ui/components/_SimpleRail.kt:85` | 300ms `FastOutSlowInEasing` | **fixed** → `KroxMotion.BASE` (180ms) + `KroxEaseOut` |
-| `ui/components/_SimpleRail.kt:77` | default padding vertical `8.dp` | **fixed** → `6.dp` (1 live caller). Not "12dp" as first written — see note below |
-| `ui/components/_SimpleRail.kt:79` | `shapes.extraLarge` default | **left alone** — 0 callers pass `shape`, so the default never executes |
-| `ui/components/_SimpleRail.kt:118-152` | 5 × `animateDpAsState`/`animateColorAsState` with no `animationSpec` | **fixed** → `KroxMotion.FAST` (120ms) + `KroxEaseOut` |
-| `ui/components/RecordingPlayerOverlay.kt:294,545` | 300ms, 250ms fade | out of scope — pre-existing overlay, not a redesigned surface |
+| `ui/components/_SimpleRail.kt:92` | 300ms `FastOutSlowInEasing` | **fixed** → `KroxMotion.BASE` (180ms) + `KroxEaseOut` |
+| `ui/components/_SimpleRail.kt:81` | default padding vertical `8.dp` | **fixed** → `6.dp` (1 live caller). Not "12dp" as first written — see note below |
+| `ui/components/_SimpleRail.kt:83` | `shapes.extraLarge` default | **left alone** — 0 callers pass `shape`, so the default never executes |
+| `ui/components/_SimpleRail.kt:141-181` | 5 × `animateDpAsState`/`animateColorAsState` with no `animationSpec` | **fixed** → `KroxMotion.FAST` (120ms) + `KroxEaseOut` |
+| `ui/screens/_Navigation.kt:119,130` | 2 × bare `tween(...)` on the page-transition path — **no `easing` argument**, so both fell back to the §3.6-forbidden `FastOutSlowInEasing` | **fixed in R-46** → `easing = KroxEaseOut`, **every duration unchanged**. R-45 logged these two as a carve-out, but only the *duration* half ever was one: `getAnimateSpeed()`'s 1500ms base is R-05. The *easing* half was an undocumented presentation defect on a live path — `rememberTransitionSpec()` is consumed by 15 screens and `rememberSwapTween()` by 3 more |
+| `ui/components/RecordingPlayerOverlay.kt:295,545` | 300ms, 250ms fade; `:295` is also a bare `tween(200)` | out of scope — pre-existing overlay, not a redesigned surface. Citation corrected from `:294`, which is the `enter =` line above the tween |
 | `ui/components/Shimmer.kt:49` | 1000ms | **keep** — a shimmer's period, not a transition |
 | `ui/screens/content/elements/AccountElements.kt:273` | 10000ms | **keep** — infinite loop animation, not a transition |
-| `ui/screens/content/BuiltInFileManager.kt:118,120,122` | 320 / 280 / 260ms `FastOutSlowInEasing` | **fixed** → `KroxMotion.SLOW` (240ms) + `KroxEaseOut` |
-| `ui/screens/content/BuiltInFileManager.kt:124,745,749,1206` | 220 / 200 / 180 / 240ms `FastOutSlowInEasing` | **fixed** → durations kept, easing → `KroxEaseOut` (§3.6 permits only linear / ease-out / page curve) |
+| `ui/control/mouse/HotspotEditor.kt:193` | 1000ms `LinearEasing` blink | **keep** — `infiniteRepeatable(RepeatMode.Reverse)` halo pulse, not a transition; `LinearEasing` is §3.6-permitted. Row added in R-46: it survived three motion passes because the §6.2 audit swept the *redesigned* surfaces, not the whole tree, and this dialog (`MouseHotspotEditorDialog`, one caller at `ControlSettingsScreen.kt:806`) is outside them |
+| `ui/screens/content/BuiltInFileManager.kt:123,125,127` | 320 / 280 / 260ms `FastOutSlowInEasing` | **fixed** → `KroxMotion.SLOW` (240ms) + `KroxEaseOut`. Citations corrected in R-45: the row said `:118,120,122`, which after every prior pass now land on `TAG`, `SIDEBAR_WIDTH`, and the `SidebarSlideEnterSpec` *declaration* respectively — the tween bodies are one line below each |
+| `ui/screens/content/BuiltInFileManager.kt:129,751,755,1212,1258,1264` | `SectionShrinkSpec` 220ms, breadcrumb expand 200ms / shrink 180ms, chevron 240ms, and the two nav-item tweens, all originally `FastOutSlowInEasing` | **fixed** → easing → `KroxEaseOut` on all of them (§3.6 permits only linear / ease-out / page curve). The nav pair `:1258`/`:1264` were also **retimed** to §6.5's 120ms / 140ms by R-42, so they read 120/140 now, not the 220/220 this row used to claim; the others kept their durations. Citations corrected in R-45: the row said `:124,745,749,1206`, four stale numbers that now land on `SidebarSlideExitSpec`, a `modifier =` argument, a `visible = !atRoot,` argument, and a bare `),` — no tween at any of them. The row's duration list was stale too and is re-derived here from the current file. R-43's note that `:124` "had not actually received an easing argument" could not be re-verified against a pre-R-42 file, so the claim is dropped rather than restated; what is verified is that all six lines carry `KroxEaseOut` today |
+| `ui/screens/content/BuiltInFileManager.kt:131,133,292,293,750,754,1460,1461,1495,1496` | 10 `tween(...)` calls with **no** `easing` argument | **fixed in R-45** → `easing = KroxEaseOut` on all 10, durations and `delayMillis` unchanged. R-43 fixed the `expandHorizontally`/`shrinkHorizontally` halves at `:750`/`:754` and left the `fadeIn`/`fadeOut` halves immediately beside them on the default easing; 7 further sites had never been audited. `SectionFadeInSpec`/`SectionFadeOutSpec` (`:130-133`) are consumed at `:1230`/`:1234`, so they were live, not dead |
 | `ui/control/Hotbar.kt:185` | `tween(800)` on the resize settle | **fixed** → `KroxMotion.SLOW` + `KroxEaseOut` |
 | `ui/screens/content/download/assets/elements/_Search.Filter.kt:696,704` | 200ms `tween` | **fixed** → `KroxMotion.FAST` + `KroxEaseOut` |
 | `ui/screens/content/AccountManageScreen.kt:505` | bare `spring()` on drag-lift elevation | **fixed** → `KroxMotion.FAST` + `KroxEaseOut`; `spring` import dropped |
@@ -140,7 +143,15 @@ and it is a scope decision, not an oversight.** Recorded in `docs/audit/RISKS.md
 
 Remaining violations are exactly the two documented carve-outs: `SideBar.kt` (0 references,
 R-04) and `RecordingPlayerOverlay.kt` (pre-existing, out of scope). Both are listed rather
-than hidden, so a reviewer can disagree with the call.
+than hidden, so a reviewer can disagree with the call. `_Navigation.kt` was a *third* listed
+carve-out until R-46 — only its duration half ever was one (R-05); the easing half is fixed.
+
+§9.2's motion ratio is a separate axis from the §6 table and has no row in it: the play
+button's background must animate at `KroxMotion.FAST` (120ms) while its scale runs at
+`KroxMotion.INSTANT` (80ms). `ui/components/Buttons.kt` was running both at `INSTANT`,
+which satisfied §3.6 while violating §9.2's split — the fastest duration was on the
+slower channel and the faster channel was unused. Fixed in R-46; the scale tween is
+deliberately left at 80ms.
 
 `TextRailItem` has exactly one live call site —
 `ui/screens/content/elements/VersionsManageElements.kt:330` (`VersionCategoryItem`). It

@@ -102,7 +102,7 @@ public abstract class MixinMouse {
             return;
          }
 
-         KroxClient.get().getClientManager().hud().onMouseDrag(this.client.mouse.getX(), this.client.mouse.getY());
+         KroxClient.get().getClientManager().hud().onMouseDrag(this.client.mouse.getX(), this.client.mouse.getY(), this.client.getWindow().getScaledWidth(), this.client.getWindow().getScaledHeight());
       } catch (Throwable var5) {
          KroxClient.LOGGER.error("[Krox] HUD drag handler threw.", var5);
       }

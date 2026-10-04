@@ -61,7 +61,7 @@ public final class KroxClickGuiScreen extends net.minecraft.client.gui.screen.Sc
       ctx.fill(baseX, baseY, baseX + totalWidth, baseY + 1, KroxTheme.ACCENT);
       ctx.fill(baseX, baseY + totalHeight - 1, baseX + totalWidth, baseY + totalHeight, KroxTheme.BORDER);
       ctx.drawText(this.textRenderer, "KROX CLIENT", baseX + 6, baseY + 8, KroxTheme.ACCENT, true);
-      ctx.drawText(this.textRenderer, "v1.0.0", baseX + 6 + 110, baseY + 8, KroxTheme.TEXT_MUTED, true);
+      ctx.drawText(this.textRenderer, "v" + KroxClient.version(), baseX + 6 + 110, baseY + 8, KroxTheme.TEXT_MUTED, true);
       ctx.drawText(this.textRenderer, "ESC to close", baseX + totalWidth - 80, baseY + 8, KroxTheme.TEXT_SECONDARY, true);
       int catX = baseX + 6;
       int catY = baseY + 28;
