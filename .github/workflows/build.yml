@@ -25,6 +25,55 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
+      # Required. ZalithLauncher/build.gradle.kts sets compileSdk = 37 and the
+      # GitHub image ships no Android SDK, so configuration failed before this.
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      # Required, not optional. build.gradle.kts:104 pins ndkVersion =
+      # 25.2.9519653 and :106-109 build src/main/jni/Android.mk through
+      # ndkBuild, so AGP fails configuration if the NDK is absent.
+      # nttld/setup-ndk is the action that exists; ndk-actions/setup-ndk and
+      # android-actions/setup-ndk both 404. See docs/audit/RISKS.md R-01.
+      - name: Setup NDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: 25.2.9519653
+
+      # build.gradle.kts:49 and :55 both set
+      # storeFile = file("zalith_launcher_debug.jks"), which resolves relative
+      # to the MODULE directory -- not the workspace root and not RUNNER_TEMP.
+      # The keystore is gitignored (.gitignore:45), so it must arrive here.
+      - name: Resolve signing credentials
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+          DEFAULT_STORE_PASSWORD: ${{ secrets.DEFAULT_STORE_PASSWORD }}
+          DEFAULT_KEY_PASSWORD: ${{ secrets.DEFAULT_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KS=ZalithLauncher/zalith_launcher_debug.jks
+          if [ -n "${KEYSTORE_B64:-}" ]; then
+            printf '%s' "$KEYSTORE_B64" | base64 --decode > "$KS"
+            echo "STORE_PW=${DEFAULT_STORE_PASSWORD:-}" >> "$GITHUB_ENV"
+            echo "KEY_PW=${DEFAULT_KEY_PASSWORD:-}" >> "$GITHUB_ENV"
+            echo "::notice::Signing with the repository KEYSTORE_B64."
+          else
+            # ponytail: throwaway CI debug key, NOT the release key. Generate one
+            # so CI can produce a real installable debug APK with no secret
+            # present; the owner's release key is untouched and still needs the
+            # rotation in RISKS.md R-01. Set KEYSTORE_B64 + the two passwords to
+            # get signature-compatible APKs instead.
+            PW="$(head -c 32 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 24)"
+            keytool -genkeypair -keystore "$KS" -storetype JKS \
+              -alias movtery_zalith_debug -keyalg RSA -keysize 2048 \
+              -validity 10000 -storepass "$PW" -keypass "$PW" \
+              -dname "CN=KroxClient CI Debug, O=KroxClient, C=US"
+            echo "STORE_PW=$PW" >> "$GITHUB_ENV"
+            echo "KEY_PW=$PW" >> "$GITHUB_ENV"
+            echo "::warning::KEYSTORE_B64 unset -- signing with a throwaway CI key."
+          fi
+          sha256sum "$KS"
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
@@ -34,7 +83,15 @@ jobs:
       - name: Build Krox Client (remapJar)
         run: ./client/gradlew :client:remapJar --stacktrace || echo "client remapJar skipped"
 
+      # build.gradle.kts:26-27 calls error(...) when either password is absent,
+      # so the build refuses to configure without them. ORG_GRADLE_PROJECT_* is
+      # Gradle's built-in convention for injecting properties from the
+      # environment, so no password ever lives in a committed gradle.properties.
+      # STORE_PW/KEY_PW come from $GITHUB_ENV, written by the step above.
       - name: Build Debug APK
+        env:
+          ORG_GRADLE_PROJECT_default_store_password: ${{ env.STORE_PW }}
+          ORG_GRADLE_PROJECT_default_key_password: ${{ env.KEY_PW }}
         run: ./gradlew assembleDebug -Darch=${{ matrix.arch }} --stacktrace
 
       - name: Upload Debug APK
