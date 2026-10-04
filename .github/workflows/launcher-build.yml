@@ -47,9 +47,25 @@ jobs:
 
       # ZalithLauncher/build.gradle.kts sets ndkVersion = 25.2.9519653 and builds
       # src/main/jni/Android.mk through ndkBuild, so the NDK is a hard requirement.
-      - uses: ndk-actions/setup-ndk@v1
+      # ndk-actions/setup-ndk does not exist as a repository; every run died at
+      # "Unable to resolve action" before Gradle started. See docs/audit/RISKS.md R-01.
+      - uses: nttld/setup-ndk@v1
         with:
           ndk-version: 25.2.9519653
+
+      # The keystore is gitignored (.gitignore: ZalithLauncher/*.jks), so it must
+      # arrive out of band. build.gradle.kts:49 resolves file("zalith_launcher_debug.jks")
+      # relative to the module dir, so that is exactly where it has to land.
+      - name: Fetch signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::KEYSTORE_B64 is not set; the debug build cannot sign."
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > ZalithLauncher/zalith_launcher_debug.jks
+          sha256sum ZalithLauncher/zalith_launcher_debug.jks
 
       - uses: gradle/actions/setup-gradle@v4
 
