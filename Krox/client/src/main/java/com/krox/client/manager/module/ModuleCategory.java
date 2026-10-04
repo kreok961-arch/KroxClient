@@ -11,6 +11,7 @@ public enum ModuleCategory {
    ACCOUNT("Account"),
    MISC("Misc"),
    COSMETICS("Cosmetics"),
+   WAYPOINTS("Waypoints"),
    CLIENT("Client");
 
    private final String displayName;

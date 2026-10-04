@@ -89,6 +89,65 @@ It is also a spec §3.6 violation: it animates with
 Left in place. Deletion is a scope decision, not a compile gate, and it is unrelated to
 the visual redesign. Candidate for removal during Phase 6 if confirmed still unreferenced.
 
+## R-06 — Local compile gate never returns a verdict; the kill is external to the container (open, environment)
+
+**Status:** OPEN. Not a code defect. It blocks the §19.1 compile gate **on this box only**, and
+is why the build is delivered through CI instead.
+
+**Symptom.** Every `:ZalithLauncher:compileDebugKotlin` attempt reaches the Kotlin task and then
+dies with `Gradle build daemon disappeared unexpectedly` and **zero `e:` lines**. The compiler has
+therefore never produced a verdict. A run with zero `e:` lines is *absence of a verdict*, not
+*absence of errors* — it must not be read as green.
+
+**Attempts, in order.** All four failures share the signature above.
+
+| # | `org.gradle.jvmargs` | `workers.max` | kotlinc | Outcome |
+|---|---|---|---|---|
+| 1 | `-Xmx1536m` | default | out-of-process | daemon disappeared |
+| 2 | `-Xmx2560m` | default | out-of-process | daemon disappeared |
+| 3 | `-Xmx1200m` | 1 | in-process | daemon disappeared |
+| 4 | `-Xmx1200m` | 1 | in-process | daemon disappeared (RSS-traced) |
+
+A fifth run was launched after the environment changed (below) and was interrupted before it could
+conclude. **It is not a fifth failure** — no `EXIT=` line, no `e:` lines.
+
+**What was ruled out.** The original OOM diagnosis is falsified. This section supersedes the
+earlier entry that blamed PID 292347.
+
+- The RSS trace of run 4's daemon (PID 338639) across its final ten seconds reads
+  `1325496 → 1354172 → 1421040 → 1433460 → 1436536 → 1436100 → 1436112 → 1436024 → 1442312 →
+  1524556` KB, after which the process is gone. That is **monotonic growth to a peak, then death**
+  — not a hit against a fixed heap ceiling, and not exhaustion of a fixed host pool.
+- `memory.max` in the cgroup is `max` and every `memory.events` counter is zero, on a cgroup chain
+  one level deep (the namespace root). No container-visible limit is being reached.
+- No `hs_err_pid*.log` and no `java.lang.OutOfMemoryError` appears in any captured log.
+- `dmesg` is unreadable, so the host kernel's own accounting cannot be consulted from in here.
+
+Together these leave an external kill as the only explanation consistent with the evidence. The
+mechanism is **not nameable from inside the container**, so heap tuning is not a lever: `-Xmx`
+was raised and lowered across four attempts with no effect on the outcome, which is exactly what a
+non-memory kill predicts.
+
+**Superseded details.** The foreign `Gradle 9.7.1` daemon (PID 292347, another workspace,
+~1.1–1.3 GB) was genuinely resident during all four failures but **has since exited on its own**.
+Run 5 was launched precisely because that freed ~4 GB; it was interrupted before it could show
+whether the box builds with nothing else holding memory. That question is open, and it is not the
+one this project is betting on.
+
+**Resolution.** CI carries the build. `.github/workflows/launcher-build.yml` runs on
+`ubuntu-latest` (7 GB RAM, 4 cores, real swap) and so is not subject to whatever kills the local
+daemon. `docs/spec/tokens.md` §8 has been corrected to say so, and §19.1 in
+`docs/REGRESSIONS.md` is marked BLOCKED against this risk rather than done.
+
+**Residual risk:** every local compile check on this host is gated on a machine-level condition
+that cannot be reproduced from inside this repo. Before reading a local compile failure as a
+source defect, read `EXIT=` out of the captured log and check `ps -eo pid,rss,args | grep
+GradleDaemon` — the failure mode is indistinguishable from a real compiler crash at the log
+level. **A local green would still be a claim about one run on one host, nothing more.**
+
+**Not attempted:** killing anything outside this project, or reading host kernel logs outside the
+container. Both are outside this project's blast radius.
+
 ## R-05 — Spec §3.6 contradicts two shipped user settings (accepted, owner to confirm)
 
 Spec §3.6 says *"nothing above 240ms, and no bounce / elastic / spring."* Two things in the

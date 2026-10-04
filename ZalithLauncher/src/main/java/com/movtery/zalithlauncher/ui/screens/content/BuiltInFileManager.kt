@@ -99,6 +99,7 @@ import com.movtery.zalithlauncher.ui.screens.content.elements.SortByDropdownMenu
 import com.movtery.zalithlauncher.ui.screens.content.elements.SortByEnum
 import com.movtery.zalithlauncher.ui.screens.content.versions.layouts.VersionChunkBackground
 import com.movtery.zalithlauncher.ui.theme.KroxHoverOverlay
+import com.movtery.zalithlauncher.ui.theme.onButtonColor
 import com.movtery.zalithlauncher.ui.theme.itemColor
 import com.movtery.zalithlauncher.ui.theme.onItemColor
 import com.movtery.zalithlauncher.utils.animation.KroxEaseOut
@@ -127,9 +128,9 @@ private val SectionExpandSpec: FiniteAnimationSpec<IntSize> =
 private val SectionShrinkSpec: FiniteAnimationSpec<IntSize> =
     tween(220, easing = KroxEaseOut)
 private val SectionFadeInSpec: FiniteAnimationSpec<Float> =
-    tween(200, delayMillis = 50)
+    tween(200, delayMillis = 50, easing = KroxEaseOut)
 private val SectionFadeOutSpec: FiniteAnimationSpec<Float> =
-    tween(160)
+    tween(160, easing = KroxEaseOut)
 
 private val EDITABLE_EXTENSIONS = setOf(
     "txt", "json", "json5", "properties", "yml", "yaml", "cfg", "conf",
@@ -288,8 +289,8 @@ fun BuiltInFileManagerScreen(
             AnimatedVisibility(
                 visible = sidebarVisible,
                 enter = slideInHorizontally(SidebarSlideEnterSpec) { -it } +
-                    fadeIn(tween(240, delayMillis = 80)),
-                exit = fadeOut(tween(160)) +
+                    fadeIn(tween(240, delayMillis = 80, easing = KroxEaseOut)),
+                exit = fadeOut(tween(160, easing = KroxEaseOut)) +
                     slideOutHorizontally(SidebarSlideExitSpec) { -it }
             ) {
                 Row(modifier = Modifier.fillMaxHeight()) {
@@ -746,11 +747,11 @@ fun BuiltInFileManagerScreen(
                     ) {
                         AnimatedVisibility(
                             visible = !atRoot,
-                            enter = fadeIn(tween(180)) + expandHorizontally(
+                            enter = fadeIn(tween(180, easing = KroxEaseOut)) + expandHorizontally(
                                 animationSpec = tween(200, easing = KroxEaseOut),
                                 expandFrom = Alignment.Start
                             ),
-                            exit = fadeOut(tween(140)) + shrinkHorizontally(
+                            exit = fadeOut(tween(140, easing = KroxEaseOut)) + shrinkHorizontally(
                                 animationSpec = tween(180, easing = KroxEaseOut),
                                 shrinkTowards = Alignment.Start
                             )
@@ -1253,21 +1254,27 @@ private fun SidebarNavItem(
         targetValue = if (selected)
             MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
         else Color.Transparent,
-        animationSpec = tween(KroxMotion.PAGE),
+        // §6.5 背景 120ms ease-out
+        animationSpec = tween(KroxMotion.FAST, easing = KroxEaseOut),
         label = "navBg_$label"
     )
     val accentColor by animateColorAsState(
         targetValue = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
-        animationSpec = tween(KroxMotion.PAGE),
+        // §6.5 左侧色条 140ms ease-out
+        animationSpec = tween(140, easing = KroxEaseOut),
         label = "navAccent_$label"
     )
     val hoverColor by animateColorAsState(
         targetValue = if (isHovered) KroxHoverOverlay else Color.Transparent,
-        animationSpec = tween(KroxMotion.FAST),
+        animationSpec = tween(KroxMotion.FAST, easing = KroxEaseOut),
         label = "navHover_$label"
     )
-    val contentColor =
-        if (selected) MaterialTheme.colorScheme.primary else LocalContentColor.current
+    // §6.4 悬停时文字与图标提到 #F9FAFB（未选中时不可见的悬停才需要提亮）。
+    val contentColor = when {
+        selected -> MaterialTheme.colorScheme.primary
+        isHovered -> onButtonColor()
+        else -> LocalContentColor.current
+    }
 
     Row(
         modifier = Modifier
@@ -1450,8 +1457,8 @@ private fun FileItemLayout(
         ) {
             AnimatedVisibility(
                 visible = selectionMode,
-                enter = fadeIn(tween(180)) + expandHorizontally(tween(220)),
-                exit = fadeOut(tween(140)) + shrinkHorizontally(tween(180))
+                enter = fadeIn(tween(180, easing = KroxEaseOut)) + expandHorizontally(tween(220, easing = KroxEaseOut)),
+                exit = fadeOut(tween(140, easing = KroxEaseOut)) + shrinkHorizontally(tween(180, easing = KroxEaseOut))
             ) {
                 Checkbox(
                     checked = isChecked,
@@ -1485,8 +1492,8 @@ private fun FileItemLayout(
 
             AnimatedVisibility(
                 visible = !selectionMode,
-                enter = fadeIn(tween(180)),
-                exit = fadeOut(tween(140))
+                enter = fadeIn(tween(180, easing = KroxEaseOut)),
+                exit = fadeOut(tween(140, easing = KroxEaseOut))
             ) {
                 Row {
                     IconButton(onClick = onProperties) {

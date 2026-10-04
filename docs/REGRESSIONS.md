@@ -19,40 +19,71 @@ Both are real and unrelated — cite the file, not the number.
 
 ## Verification status — read this first
 
-**No entry in this document is backed by a compile.** The CI compile gate is blocked by
-R-01 (`docs/audit/RISKS.md`): the two signing passwords cannot be created from this
-environment, so `.github/workflows/launcher-build.yml` fails at `build.gradle.kts:26-27`
-before it reaches Kotlin compilation. There is also no local Android SDK and no local
-Material3 artifacts, and the local JDK is 25 where the build requires 17.
+**Corrected at Phase 10.** An earlier revision of this file stated that no entry here was
+backed by a compile, because the CI gate was blocked and no local Android SDK or
+Material3 artifacts were believed to exist. **That was wrong on all three counts**, and the
+error is worth recording rather than quietly deleting: it was inferred from CI failure
+plus environment inspection, never tested.
 
-Consequences, stated plainly:
+The truth, established by running it:
 
-- Every code change recorded below is **unverified by a compiler**.
-- **Three** compile breaks introduced during the redesign were caught and repaired by
-  inspection rather than by a build (entries R-19, R-39). All three are the same failure:
-  a symbol used without the import that supplies it. There is no reason to expect a fourth
-  to be any different, and no automated check in this environment that would catch it.
-- §19.1 "verify the current build works" and the baseline screenshot capture are
-  **blocked**, not skipped. Neither was performed.
-- §19.2's post-phase re-verification list has never been executed, because there is no
-  runnable artifact to execute it against.
+- `./gradlew :ZalithLauncher:compileDebugKotlin` **configures and starts locally.** The
+  Android SDK is present (`/opt/android-sdk`, wired through
+  `ZalithLauncher/local.properties`), and both signing passwords resolve from
+  `ZalithLauncher/gradle.properties`. R-01's real cause is **not** missing secrets. It is
+  a `gh` token-permission failure (`HTTP 403: Resource not accessible by integration`)
+  against the GitHub API. The local JDK is 25 against a Java 17 *target*; that is a
+  warning, not a blocker.
+- **The compiler itself has still never returned a verdict.** Every attempt reaches
+  `> Task :ZalithLauncher:compileDebugKotlin` and then the daemon vanishes. See
+  `docs/audit/RISKS.md` R-06. This is a **silent kill**: no `java.lang.OutOfMemoryError`,
+  no `hs_err_pid*.log`, zero cgroup OOM counters, and `dmesg` is unreadable in this
+  container — so the mechanism cannot be named from inside the box.
+- One attempt **did** reach the compiler and fail with **15 Kotlin errors** across 6 files —
+  none in the R-19/R-39 "missing import" class. Four distinct root causes, all logged as
+  R-47, all repaired.
 
-### What has replaced the compiler
+Consequences now:
 
-Since a build is impossible here, three static checks stand in for it. They are the
-only evidence behind any "repaired" claim in this file:
+- R-47's five repairs are **unverified**. The run that produced the 15 errors reported
+  them; the runs after the repair reported nothing at all, so the fixes are known-good by
+  inspection only, exactly like every entry that says "unverified" below.
+- R-19, R-39, R-45 and R-46 remain **unverified**. The zero-`e:` line count in the later
+  runs does not mean those errors are gone — it means the compiler never got to report.
+- §19.1 "verify the current build works" is **BLOCKED, not done.** The remaining §19.1/§19.2
+  rows need a *runnable* artifact and a human or emulator; compilation would not be
+  execution anyway, and compilation is not currently obtained either.
+
+### The gate itself
+
+```bash
+./gradlew :ZalithLauncher:compileDebugKotlin
+```
+
+Read `EXIT=` out of the captured log, not the shell's exit status, and count `^e: ` lines
+before believing a green. R-01 still gates *CI*; CI is worth restoring as a second gate,
+but it is not currently the only one that is broken.
+
+### What still stands in for a runtime
+
+Compilation proves the code builds. It proves nothing about rendering, so the checks below
+remain the only evidence for the visual claims in this file:
 
 | Check | What it catches | What it cannot catch |
 |---|---|---|
 | Import-resolution sweep across all touched files | Project symbols used with no import that supplies them — the exact R-19/R-39 failure | Wrong argument order, wrong overload, type mismatch, missing Android framework import |
 | `R.string.*` / `R.drawable.*` existence grep | Unresolved resource references | Wrong resource *type* (e.g. a colour used as a drawable) |
 | Brace-balance per edited file | A mis-placed or missing brace from a structural edit | Any other structural problem |
+| `tween(` sweep for a missing `easing` argument | The §3.6 default-easing class | Multi-line calls where the argument sits on the next line (the `TitleTexts.kt:57` false positive) |
 
-**None of these is a compile.** They raise confidence; they do not establish it. R-01
-still gates the real answer.
+**The compile gate now available for the rest of this project:**
 
-**The first action after R-01 clears is a clean CI build.** If it fails, entries
-R-19 and every entry below it are suspect until it passes.
+```bash
+./gradlew :ZalithLauncher:compileDebugKotlin
+```
+
+Run it before claiming any entry below is verified. It does not currently return a verdict
+(R-06), so today the table below remains the only evidence.
 
 ---
 
@@ -119,14 +150,22 @@ same reason the two in R-19 were.
 | R-45 | `ui/screens/content/BuiltInFileManager.kt:131,133,292,293,750,754,1460,1461,1495,1496` | Closes a §3.6 easing violation that the two prior motion passes each partially missed. A bare `tween(duration)` in Compose falls back to `FastOutSlowInEasing`, which §3.6 permits **nowhere** — only linear, ease-out, and the page curve. **10** `tween(...)` calls in this file carried no `easing` argument and were running on that default, while `tokens.md:133-134` claimed the file was fully `KroxEaseOut`. R-43 fixed the `expandHorizontally`/`shrinkHorizontally` halves at `:750`/`:754` and left the `fadeIn`/`fadeOut` halves immediately beside them on the default easing; 7 further sites had never been audited. Found with `grep -n "tween(" \| grep -v "easing"` — a one-liner that catches the whole defect class — then swept tree-wide. All 10 received `easing = KroxEaseOut`; **every duration and `delayMillis` is unchanged.** | Low. **Argument-only edits: 0 lines added, 0 removed.** No signature, no call site, no control flow, no statement ordering touched. `KroxEaseOut` was already imported at `:105` and is referenced 22× in the file, so no new import. `SectionFadeInSpec`/`SectionFadeOutSpec` are private file-level vals, but liveness was confirmed before editing (consumed at `:1230`/`:1234`) — a fix applied to a dead default is a no-op dressed as work, the same trap R-43 hit on `_SimpleRail.kt:83`. Two pre-existing bad citations in `tokens.md` were repaired in the same pass: R-43's note pointed at `:1256`/`:1262` for the nav tweens, which are actually at `:1253`/`:1261`. Tree-wide, the only remaining bare tweens are the 2 documented carve-outs (`_Navigation.kt:116,127` — R-05 user-speed slider; `RecordingPlayerOverlay.kt:295` — pre-existing overlay, out of scope) plus 1 false positive (`TitleTexts.kt:57`, where `easing = LinearEasing` sits on the next line of a multi-line call and is §3.6-permitted anyway). `spring(` count in `ui/` is **0**. Note the audit method's limit: grepping for a missing token on one line is not sufficient for multi-line calls, which is exactly what produced the `TitleTexts.kt:57` false positive. No local compile is possible (R-01: no Android SDK, JDK 25 vs required 17, CI blocked on owner-only signing secrets), so correctness here rests on grep and read — every anchor was re-derived after the edits to prove line-count neutrality. |
 | R-46 | `ui/screens/_Navigation.kt:119,130` (`rememberSwapTween`, `rememberTransitionSpec`) + `ui/components/Buttons.kt:122` (`ScalingActionButton`) | Two spec fixes found by auditing **§9.2 Play Button** and sweeping the motion surface it does not cover. (a) **`_Navigation.kt`** — R-45 logged these two bare `tween(...)` calls as a carve-out, but only the *duration* half ever was one: `getAnimateSpeed()`'s 1500ms base is **R-05**, a shipped user setting (§1.3 forbids re-clamping it, since that would change how every animation *feels*). The *easing* half was an undocumented §3.6 violation — a bare `tween(duration)` falls back to `FastOutSlowInEasing`, which the whitelist permits nowhere — on the **highest-traffic animation path in the app**. Both now pass `easing = KroxEaseOut` (new import at `:33`). (b) **`Buttons.kt`** — §9.2 requires *"Motion: 120 ms background, 80 ms scale"*, but both channels ran at `KroxMotion.INSTANT`, so the §6 table and the §9.2 ratio were both satisfied while the spec's actual split was inverted: the faster duration sat on the slower channel and the faster one went unused. The `ButtonContainer` tween moved `INSTANT` → `FAST` (80 → 120 ms). | Low. **Argument-only edits** — 0 statements removed, 0 control-flow changes. In `_Navigation.kt` the only additions are one import and one comment; both `tween(` bodies gained a single named argument, so **every `durationMillis` is byte-identical to before**. Neither factory's signature changed, so all **18** consumers (15 screens on `rememberTransitionSpec`, 3 on `rememberSwapTween`) are untouched — liveness confirmed *before* editing, the R-43 lesson, so this is not a fix to a dead default. In `Buttons.kt` the `ButtonScale` tween above it is **deliberately left at `KroxMotion.INSTANT`** — that is the 80 ms half of the §9.2 split, and re-timing it would have satisfied neither reading. The ±8% shift targets, the `interactionSource`, and `DisabledAlpha` as sole disabled signal are all unchanged (R-40's decisions stand). Verification: tree-wide `tween(durationMillis = …)` with no `easing` now returns **only** these 2 lines, both carrying `KroxEaseOut`; `spring(` in `ui/` is **0**; no `durationMillis` above 240 outside the §6.2 exceptions. No local compile is possible under R-01, so this rests on grep and read, as R-45 states. One audit-method note: the first comment drafted at `:118` contained the literal text `tween()`, which my own verification grep then flagged as a bare-tween hit — **a comment must never contain the token the sweep greps for**. Rewritten to name the fallback instead. **Third finding, audit-only:** the same tree-wide sweep surfaced `ui/control/mouse/HotspotEditor.kt:193` — a 1000ms `LinearEasing` blink that no §6.2 row covered, because the three prior motion passes audited the *redesigned* surfaces rather than the whole tree. Judged a **keep**, same class as `Shimmer.kt:49` and `AccountElements.kt:273`: it is an `infiniteRepeatable(RepeatMode.Reverse)` halo pulse, not a transition, and its easing is whitelisted. Row added to `tokens.md` §6.2; no code touched. **Two documentation corrections shipped alongside:** D-12 and R-41 both claimed "`ZalithLauncher/` is untracked, so deleting public API has no revert target". `git ls-files ZalithLauncher` returns **1240** tracked files, so the justification was false in both places. The decisions they support (keep `ScalingLabel`, keep `SideBar.kt`) are unchanged — only the stated reason was wrong. Separately, the four §6.2 rows for `BackgroundCard.kt`, `Hotbar.kt:185`, `_Search.Filter.kt:696,704`, and `AccountManageScreen.kt:505` were checked against `git show HEAD:<path>` because they appeared in no working diff; all four are **already committed** in `4704ef0`, so the discrepancy was only that those edits predate the current uncommitted batch, not a false claim. |
 
----
+| R-47 | `settings.gradle.kts`, `ui/screens/main/MainScreen.kt:32`, `ui/screens/content/download/assets/elements/_Search.Result.kt:90`, `…/search/SearchIdScreen.kt:75`, `ui/components/PageHeader.kt:62,68,83`, `ui/screens/content/settings/AboutInfoScreen.kt:102`, `…/GamepadSettingsScreen.kt:178` | **The first local compile — and it failed with 15 errors across 6 files, in four root-cause classes, none of them R-19's.** (a) `settings.gradle.kts` carried a dead `include(":KroxLauncher")` for a directory that does not exist, which failed configuration outright; removed. (b) `MainScreen.kt:32` imported `animation.core.animateColorAsState`, but that symbol lives at `androidx.compose.animation.animateColorAsState` in this Compose version — 8 sibling files already import the correct path. One import, 7 of the 15 errors. (c) `_Search.Result.kt` and `SearchIdScreen.kt` both used the `AndroidStringText` type without importing it. (d) `PageHeader.kt` passed `color =` to `AndroidStringText`, whose render function has **no** `color` parameter and delegates to `Text(...)` — so `LocalContentColor` is the only tint path, and all three sites now wrap in `CompositionLocalProvider(LocalContentColor provides …)`, the codebase idiom at `Layouts.kt:191`. (e) `AboutInfoScreen.kt` and `GamepadSettingsScreen.kt` called `item { }` on an `AnimatedLazyListScope`, which exposes only `animatedItem`/`animatedItems` and has **no `item` passthrough`; both headers became `animatedItem(scope) { _ -> … }`, which keeps the header *inside* the scrolling list rather than hoisting it out the way the non-lazy sibling screens do. | **Repaired, unverified.** Four distinct causes, so the fix was four minimal call-site corrections rather than one shared-API change: no `color` parameter was added to a composable ~30 screens reach, and no `item` passthrough was added to a wrapper with zero other callers needing it. Both would have been larger and riskier than fixing 3 + 2 call sites. The `AnimatedLazyColumn` change was re-derived mid-pass — copying the sibling screens' `Column`-wrapper shape would have silently relocated the header outside the scrollable list, a visual change, so the `animatedItem` form was chosen to preserve both position and scroll behaviour. **The run that produced these 15 errors is the last run that produced any error output.** Every attempt since has died inside `:ZalithLauncher:compileDebugKotlin` with zero `e:` lines (R-06), so the repair has never been re-tested. A compiler found these; nothing has yet confirmed it silenced them. |
 
-## §19.1 / §19.2 checklists — current state
+**Method note.** R-47 is the only entry in this log that was ever *observed* by a compiler,
+and it found 15 errors that three rounds of static checking across R-19 through R-46 had
+missed. Four of the five classes are the "symbol used without the import that supplies it"
+pattern from R-19/R-39 — but `item` on a scope that lacks it, and a named argument that does
+not exist, are new. Neither the import sweep nor the brace-balance check can detect either.
+**The compiler that made those 15 findings is the same one that has since gone silent, so the
+static checks are still the only evidence in this file — they were never sufficient, and they
+are now again the whole of it.** Do not read the zero `e:` lines in the later logs as an
+absence of errors; read them as an absence of a verdict.
 
 | Step | Status |
 |------|--------|
-| §19.1 Verify the current build works | **BLOCKED** — R-01 |
-| §19.1 Verify the current launcher launches | **BLOCKED** — no artifact |
+| §19.1 Verify the current build works | **BLOCKED** — daemon is killed inside `:ZalithLauncher:compileDebugKotlin`, so the compiler has never returned a verdict (R-06) |
+| §19.1 Verify the current launcher launches | **BLOCKED** — no installed artifact / no emulator yet |
 | §19.1 Verify every existing destination opens | **BLOCKED** — no artifact |
 | §19.1 Capture baseline screenshots | **BLOCKED** — no artifact |
 | §19.2 Re-verify every destination opens | **NOT STARTED** — no artifact |

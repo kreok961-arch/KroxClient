@@ -99,7 +99,8 @@ fun AboutInfoScreen(
             isVisible = isVisible,
             contentPadding = PaddingValues(all = 12.dp)
         ) { scope ->
-            item {
+            // AnimatedLazyListScope 只有 animatedItem/animatedItems，没有 item 透传
+            animatedItem(scope) { _ ->
                 PageHeader(
                     overline = androidText(R.string.about_launcher_title),
                     title = key.title!!

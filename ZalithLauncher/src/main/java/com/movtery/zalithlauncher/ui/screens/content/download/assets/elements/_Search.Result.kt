@@ -87,6 +87,7 @@ import com.movtery.zalithlauncher.game.download.assets.platform.PlatformSearchDa
 import com.movtery.zalithlauncher.game.download.assets.utils.ModTranslations
 import com.movtery.zalithlauncher.game.download.assets.utils.getMcmodTitle
 import com.movtery.zalithlauncher.setting.AllSettings
+import com.movtery.zalithlauncher.ui.AndroidStringText
 import com.movtery.zalithlauncher.ui.androidText
 import com.movtery.zalithlauncher.ui.buildAppendedText
 import com.movtery.zalithlauncher.ui.components.StateLabel

@@ -111,6 +111,7 @@ fun ScalingActionButton(
         label = "ButtonScale"
     )
     // §9.2：悬停提亮约 8%，按下压暗约 8%。disabled 保持原色 —— DisabledAlpha 已是禁用的唯一信号。
+    // 底色 120ms（KroxMotion.FAST）、缩放 80ms（KroxMotion.INSTANT）—— §9.2 的 120/80 分工。
     val containerColor by animateColorAsState(
         targetValue = when {
             !enabled -> colors.containerColor
@@ -118,7 +119,7 @@ fun ScalingActionButton(
             isHovered -> colors.containerColor.shift(0.08f)
             else -> colors.containerColor
         },
-        animationSpec = tween(durationMillis = KroxMotion.INSTANT, easing = KroxEaseOut),
+        animationSpec = tween(durationMillis = KroxMotion.FAST, easing = KroxEaseOut),
         label = "ButtonContainer"
     )
 

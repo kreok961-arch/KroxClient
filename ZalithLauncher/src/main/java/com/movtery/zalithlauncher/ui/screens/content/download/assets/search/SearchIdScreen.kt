@@ -72,6 +72,7 @@ import com.movtery.zalithlauncher.game.download.assets.utils.ModTranslations
 import com.movtery.zalithlauncher.game.download.assets.utils.getMcMod
 import com.movtery.zalithlauncher.game.download.assets.utils.getMcmodTitle
 import com.movtery.zalithlauncher.game.download.assets.utils.getTranslations
+import com.movtery.zalithlauncher.ui.AndroidStringText
 import com.movtery.zalithlauncher.ui.androidText
 import com.movtery.zalithlauncher.ui.base.BaseScreen
 import com.movtery.zalithlauncher.ui.buildAppendedText

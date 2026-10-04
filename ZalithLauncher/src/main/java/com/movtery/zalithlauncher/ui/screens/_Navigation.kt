@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.scene.Scene
 import com.movtery.zalithlauncher.setting.AllSettings
+import com.movtery.zalithlauncher.utils.animation.KroxEaseOut
 import com.movtery.zalithlauncher.utils.animation.TransitionAnimationType
 import com.movtery.zalithlauncher.utils.animation.getAnimateSpeed
 import kotlin.reflect.KClass
@@ -113,7 +114,9 @@ fun <E: TitledNavKey> NavBackStack<E>.addIfEmpty(navKey: E) {
 fun rememberSwapTween(): FiniteAnimationSpec<Float> {
     val speed = AllSettings.launcherAnimateSpeed.state
     return remember(speed) {
-        tween(durationMillis = (getAnimateSpeed() / 5) * 2)
+        // KROX 7.6：只允许 linear / ease-out / cubic-bezier(0.2,0,0,1)；
+        // 不传 easing 会退回 FastOutSlowInEasing（已禁用）。
+        tween(durationMillis = (getAnimateSpeed() / 5) * 2, easing = KroxEaseOut)
     }
 }
 
@@ -124,7 +127,7 @@ fun <T : Any> rememberTransitionSpec(): AnimatedContentTransitionScope<Scene<T>>
     return remember(type, speed) {
         val tween: FiniteAnimationSpec<Float> = when (type) {
             TransitionAnimationType.CLOSE -> snap()
-            else -> tween(durationMillis = (getAnimateSpeed() / 5) * 2)
+            else -> tween(durationMillis = (getAnimateSpeed() / 5) * 2, easing = KroxEaseOut)
         }
 
         {

@@ -184,5 +184,14 @@ grep -rn "durationMillis = [3-9][0-9][0-9]\|durationMillis = 1000[0-9]" ZalithLa
 grep -rc "MaterialTheme.shapes" ZalithLauncher/src/main/java/ | grep -v ':0' | wc -l
 ```
 
-Compile gate: `.github/workflows/launcher-build.yml` (see `docs/audit/RISKS.md` R-01 for the
-secrets that currently block it).
+Compile gate: `./gradlew :ZalithLauncher:compileDebugKotlin` locally. It **configures and starts**
+locally — the Android SDK is present via `ZalithLauncher/local.properties` and both signing
+passwords resolve from `ZalithLauncher/gradle.properties` — but it **has never returned a
+verdict**: the daemon is killed inside the compile task, silently, on every attempt. Treat this
+gate as unproven and read `EXIT=` out of the captured log rather than trusting the shell's exit
+status; a zero `e:` line count means no verdict, not no errors. See `docs/audit/RISKS.md` R-06 for
+the evidence and `docs/REGRESSIONS.md` for what that leaves unverified. CI's
+`.github/workflows/launcher-build.yml` is the gate that replaces it: it runs on a GitHub runner
+with 7 GB RAM and no swap, so it is not subject to whatever kills the local daemon. R-01's
+`build.gradle.kts:26-27` signing failure there is a `gh` token-permission 403 on *listing* secrets,
+not evidence that the secrets are absent.

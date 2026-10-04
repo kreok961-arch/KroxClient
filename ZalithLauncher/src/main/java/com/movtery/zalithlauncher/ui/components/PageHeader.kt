@@ -24,8 +24,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.movtery.zalithlauncher.ui.AndroidStringText
@@ -56,17 +58,24 @@ fun PageHeader(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 if (overline != null) {
+                    // AndroidStringText 没有 color 参数，走 LocalContentColor 着色
+                    CompositionLocalProvider(
+                        LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant
+                    ) {
+                        AndroidStringText(
+                            text = overline,
+                            style = KroxOverline
+                        )
+                    }
+                }
+                CompositionLocalProvider(
+                    LocalContentColor provides MaterialTheme.colorScheme.onSurface
+                ) {
                     AndroidStringText(
-                        text = overline,
-                        style = KroxOverline,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = title,
+                        style = MaterialTheme.typography.headlineSmall
                     )
                 }
-                AndroidStringText(
-                    text = title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
             }
             if (actions != null) {
                 Row(
@@ -77,11 +86,14 @@ fun PageHeader(
             }
         }
         if (subtitle != null) {
-            AndroidStringText(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            CompositionLocalProvider(
+                LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant
+            ) {
+                AndroidStringText(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
         }
     }
 }

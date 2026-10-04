@@ -25,9 +25,11 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.core.animateColorAsState
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -71,6 +73,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
@@ -127,6 +130,7 @@ import com.movtery.zalithlauncher.ui.theme.buttonColor
 import com.movtery.zalithlauncher.ui.theme.cardColor
 import com.movtery.zalithlauncher.ui.theme.feativals.FestivalTitleText
 import com.movtery.zalithlauncher.ui.theme.onBackgroundColor
+import com.movtery.zalithlauncher.ui.theme.KroxHoverOverlay
 import com.movtery.zalithlauncher.ui.theme.onButtonColor
 import com.movtery.zalithlauncher.ui.theme.onCardColor
 import com.movtery.zalithlauncher.utils.animation.KroxEaseOut
@@ -450,14 +454,27 @@ private fun SidebarNavButton(
     label: String,
     onClick: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+
     val accentColor = buttonColor(isPrimary = true)
     val containerColor by animateColorAsState(
         targetValue = if (selected) accentColor.copy(alpha = 0.10f) else Color.Transparent,
         animationSpec = tween(KroxMotion.FAST, easing = KroxEaseOut),
         label = "NavItemContainer"
     )
+    val hoverColor by animateColorAsState(
+        targetValue = if (isHovered) KroxHoverOverlay else Color.Transparent,
+        animationSpec = tween(KroxMotion.FAST, easing = KroxEaseOut),
+        label = "NavItemHover"
+    )
     val contentColor by animateColorAsState(
-        targetValue = if (selected) accentColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+        targetValue = when {
+            selected -> accentColor
+            // §6.4 悬停时文字与图标提到 #F9FAFB
+            isHovered -> onButtonColor()
+            else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+        },
         animationSpec = tween(KroxMotion.FAST, easing = KroxEaseOut),
         label = "NavItemContent"
     )
@@ -472,9 +489,11 @@ private fun SidebarNavButton(
         modifier = Modifier
             .fillMaxWidth()
             .height(44.dp),
-        color = containerColor,
+        // §6.4 选中底 + 悬停蒙版同时存在时两层都要看见，故悬停叠在选中之上。
+        color = hoverColor.compositeOver(containerColor),
         contentColor = contentColor,
-        shape = RoundedCornerShape(8.dp)
+        shape = RoundedCornerShape(8.dp),
+        interactionSource = interactionSource
     ) {
         Row(
             modifier = Modifier.fillMaxSize(),

@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.movtery.zalithlauncher.ui.screens.content.elements.DisabledAlpha
 import com.movtery.zalithlauncher.ui.theme.KroxHoverOverlay
+import com.movtery.zalithlauncher.ui.theme.onButtonColor
 import com.movtery.zalithlauncher.utils.animation.KroxEaseOut
 import com.movtery.zalithlauncher.utils.animation.KroxMotion
 
@@ -169,7 +170,12 @@ fun TextRailItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             val contentColor by animateColorAsState(
-                targetValue = if (selected) selectedContentColor else unselectedContentColor,
+                // §6.4 悬停时文字与图标提到 #F9FAFB（未选中时不可见的悬停才需要提亮）。
+                targetValue = when {
+                    selected -> selectedContentColor
+                    isHovered && enabled -> onButtonColor()
+                    else -> unselectedContentColor
+                },
                 animationSpec = tween(durationMillis = KroxMotion.FAST, easing = KroxEaseOut),
                 label = "ContentColor"
             )

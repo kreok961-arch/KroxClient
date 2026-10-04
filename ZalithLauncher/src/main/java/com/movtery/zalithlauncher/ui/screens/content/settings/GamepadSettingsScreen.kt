@@ -175,7 +175,8 @@ fun GamepadSettingsScreen(
             contentPadding = PaddingValues(12.dp),
             isVisible = isVisible
         ) { scope ->
-            item {
+            // AnimatedLazyListScope 只有 animatedItem/animatedItems，没有 item 透传
+            animatedItem(scope) { _ ->
                 PageHeader(
                     title = key.title!!
                 )
