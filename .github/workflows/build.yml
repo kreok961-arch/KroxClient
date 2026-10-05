@@ -28,21 +28,26 @@ jobs:
       # Required. ZalithLauncher/build.gradle.kts sets compileSdk = 37 and the
       # GitHub image ships no Android SDK, so configuration failed before this.
       #
-      # `packages` MUST be explicit. It defaults to 'platform-tools', and the
-      # runner's bundled cmdline-tools/16.0 no longer resolves that against the
-      # current SDK manifest -- every run died here with
+      # `packages` MUST be explicit. Its default is 'tools platform-tools', and
+      # `tools` is the deprecated legacy package that no longer exists in Google's
+      # manifest -- every run died here with
       # `Warning: Failed to find package 'tools'` / `sdkmanager ... exit code 1`.
-      # The list below is what the project has actually been built against
-      # locally (/opt/android-sdk). The NDK is deliberately absent: it is
-      # pinned and installed by the step below, and asking sdkmanager for it here
-      # resolves to a different version than build.gradle.kts:104 requires.
+      #
+      # It MUST also be SPACE-separated, not newline-separated. The action does
+      # `core.getInput('packages').split(' ')` and passes each element to
+      # sdkmanager as its own argument, so a YAML `|` block collapses into a
+      # single malformed package name (verified in the v3 bundle dist/index.js).
+      #
+      # `platforms;android-37` is NOT a real coordinate -- repository2-3.xml only
+      # carries android-37.0/37.1/37.2 and their betas. `android-37.0` is what
+      # this project builds against locally (/opt/android-sdk). The NDK is
+      # deliberately absent: it is pinned and installed by the step below, and
+      # asking sdkmanager for it here resolves to a different version than
+      # build.gradle.kts:104 requires.
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: |
-            platform-tools
-            platforms;android-37
-            build-tools;36.0.0
+          packages: platform-tools platforms;android-37.0 build-tools;36.0.0
 
       # Required, not optional. build.gradle.kts:104 pins ndkVersion =
       # 25.2.9519653 and :106-109 build src/main/jni/Android.mk through
